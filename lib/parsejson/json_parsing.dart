@@ -5,13 +5,14 @@ import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 import 'package:shamand/serial/serializers.dart';
 
-part 'article.g.dart';
+part 'json_parsing.g.dart';
 
 abstract class Article implements Built<Article, ArticleBuilder> {
   static Serializer<Article> get serializer => _$articleSerializer;
 
   Article._();
 
+  @nullable
   int get id;
 
   @nullable

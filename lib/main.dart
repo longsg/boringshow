@@ -30,25 +30,51 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<Article> _aricles = articleList;
+  List<int> _idStories = [
+    4607186,
+    24617542,
+    24605949,
+    24601579,
+    24593093,
+    24618707,
+    24593028,
+    24609449,
+    24599642,
+    24615916,
+    24613979,
+    24600978,
+    24599837,
+    24607645,
+    24615185,
+    24623076,
+    24608925,
+    24611341
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
-        body: RefreshIndicator(
-          onRefresh: () async {
-            await Future.delayed(const Duration(seconds: 2));
-            setState(() {
-              _aricles.removeAt(0);
-            });
-          },
-          child: ListView(
-            children: _aricles.map(_buildItem).toList(),
-          ),
-        ));
+      appBar: AppBar(
+        title: Text(widget.title),
+      ),
+      // body: RefreshIndicator(
+      //   onRefresh: () async {
+      //     await Future.delayed(const Duration(seconds: 2));
+      //     setState(() {
+      //       _aricles.removeAt(0);
+      //     });
+      //   },
+      //   child: ListView(
+      //     children: _aricles.map(_buildItem).toList(),
+      //   ),
+      // ));
+      body: ListView(
+        children: _idStories.map((e) =>
+            FutureBuilder<Widget>(
+              builder: (context, AsyncSnapshot <Article>)=>null,
+            )).toList(),
+      ),
+    );
   }
 
   Widget _buildItem(Article article) {
