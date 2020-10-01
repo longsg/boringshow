@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'package:http/http.dart' as http;
 import 'model/article.dart';
 
 void main() {
@@ -31,7 +31,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   List<int> _idStories = [
-    4607186,
     24617542,
     24605949,
     24601579,
@@ -57,33 +56,32 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      // body: RefreshIndicator(
-      //   onRefresh: () async {
-      //     await Future.delayed(const Duration(seconds: 2));
-      //     setState(() {
-      //       _aricles.removeAt(0);
-      //     });
-      //   },
-      //   child: ListView(
-      //     children: _aricles.map(_buildItem).toList(),
-      //   ),
-      // ));
       body: ListView(
-        children: _idStories.map((e) =>
-            FutureBuilder<Widget>(
-              builder: (context, AsyncSnapshot <Article>)=>null,
-            )).toList(),
+        children: _idStories
+            .map((e) => FutureBuilder<Article>(
+                  future: _getArticler(e),
+                  builder: (context, AsyncSnapshot<Article> snapShot) {
+                    if (snapShot.connectionState == ConnectionState.done) {
+                      return _buildItem(snapShot.data);
+                    } else {
+                      return Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                  },
+                ))
+            .toList(),
       ),
     );
   }
 
   Widget _buildItem(Article article) {
     return Padding(
-      key: Key(article.text),
+      key: Key(article.title),
       padding: const EdgeInsets.all(15.0),
       child: ExpansionTile(
         title: Text(
-          article.text,
+          article.title ?? '[null]',
           style: TextStyle(fontSize: 16),
         ),
         children: [
@@ -97,7 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     size: 24,
                   ),
                   onPressed: () async {
-                    final fakeUrl = "https://${article.url}";
+                    final fakeUrl = "${article.url}";
                     if (await canLaunch(fakeUrl)) {
                       launch(fakeUrl);
                     }
@@ -114,5 +112,14 @@ class _MyHomePageState extends State<MyHomePage> {
         // },
       ),
     );
+  }
+
+  Future<Article> _getArticler(int id) async {
+    final storyUrl = "https://hacker-news.firebaseio.com/v0/item/$id.json";
+    final res = await http.get(storyUrl);
+    if (res.statusCode != 200) {
+      return null;
+    }
+    return parseArticle(res.body);
   }
 }
