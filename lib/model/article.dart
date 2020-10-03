@@ -54,15 +54,15 @@ abstract class Article implements Built<Article, ArticleBuilder> {
   factory Article([void Function(ArticleBuilder) updates]) = _$Article;
 }
 
-List<int> parseTopSeries(String jsonStr) {
-  // final parsed = json.decode(jsonStr);
-  // final listOfIds = List<int>.from(parsed);
-  // return listOfIds;
-  return [];
+List<int> parseStories(String jsonStr) {
+  final parsed = json.jsonDecode(jsonStr);
+  final listOfIds = List<int>.from(parsed);
+  return listOfIds;
 }
 
 Article parseArticle(String jsonStr) {
   final parsed = json.jsonDecode(jsonStr);
-  Article article = serializersStandard.deserializeWith(Article.serializer, parsed);
+  Article article =
+      serializersStandard.deserializeWith(Article.serializer, parsed);
   return article;
 }
