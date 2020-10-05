@@ -1,11 +1,13 @@
 import 'dart:collection';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:shamand/bloc/hacknew_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:http/http.dart' as http;
 
 import 'package:shamand/model/article.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
   final bloc = HackerNewBloc();
@@ -21,6 +23,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -52,6 +55,27 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
         leading: LoadingInfo(isLoading: widget.bloc.isLoading),
+        actions: [
+          IconButton(
+              icon: Icon(Icons.search),
+              onPressed: () async {
+                final result = await showSearch(
+                    context: context,
+                    delegate:
+                        ArticleSearch(article: widget.bloc.articleStream));
+                // if (await canLaunch(result.url)) {
+                //   launch(result.url,forceWebView: true);
+                // }
+                if (result != null) {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => HackerNewWebView(
+                                urlSource: result.url,
+                              )));
+                }
+              })
+        ],
       ),
       body: StreamBuilder<UnmodifiableListView<Article>>(
           stream: widget.bloc.articleStream,
@@ -106,9 +130,18 @@ class _MyHomePageState extends State<MyHomePage> {
                     if (await canLaunch(fakeUrl)) {
                       launch(fakeUrl);
                     }
-                  })
+                  }),
             ],
-          )
+          ),
+          Container(
+              height: 200,
+              child: WebView(
+                initialUrl: article.url,
+                javascriptMode: JavascriptMode.unrestricted,
+                gestureRecognizers: Set()
+                  ..add(Factory<VerticalDragGestureRecognizer>(
+                          () => VerticalDragGestureRecognizer())),
+              ))
         ],
       ),
     );
@@ -166,5 +199,138 @@ class LoadingInfoState extends State<LoadingInfo>
             child: Icon(FontAwesomeIcons.hackerNews),
           );
         });
+  }
+}
+
+class ArticleSearch extends SearchDelegate<Article> {
+  final Stream<UnmodifiableListView<Article>> article;
+
+  ArticleSearch({this.article});
+
+  @override
+  List<Widget> buildActions(BuildContext context) {
+    return [
+      IconButton(
+          icon: Icon(Icons.close),
+          onPressed: () {
+            query = "";
+            close(context, null);
+          })
+    ];
+  }
+
+  @override
+  Widget buildLeading(BuildContext context) {
+    // TODO: implement buildLeading
+    return IconButton(
+        icon: Icon(Icons.arrow_back_ios),
+        onPressed: () {
+          close(context, null);
+        });
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    return StreamBuilder(
+      stream: article,
+      builder:
+          (context, AsyncSnapshot<UnmodifiableListView<Article>> snapShot) {
+        if (!snapShot.hasData) {
+          return Center(
+            child: Text("No data"),
+          );
+        }
+        final result = snapShot.data
+            .where((element) => element.title.toLowerCase().contains(query));
+        return ListView(
+          children: result
+              .map<ListTile>((e) =>
+              ListTile(
+                title: Text(
+                  e.title,
+                  style: Theme
+                      .of(context)
+                      .textTheme
+                      .subtitle1
+                      .copyWith(fontSize: 16.0, color: Colors.green),
+                ),
+                leading: Icon(Icons.book),
+                onTap: () {
+                  // if (await canLaunch(e.url)) {
+                  //   await launch(e.url);
+                  // }
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              HackerNewWebView(urlSource: e.url)));
+                  close(context, e);
+                },
+              ))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return StreamBuilder(
+      stream: article,
+      builder:
+          (context, AsyncSnapshot<UnmodifiableListView<Article>> snapShot) {
+        if (!snapShot.hasData) {
+          return Center(
+            child: Text("No data !"),
+          );
+        }
+        final result =
+        snapShot.data.where((e) => e.title.toLowerCase().contains(query));
+
+        return ListView(
+          children: result
+              .map<ListTile>((value) =>
+              ListTile(
+                title: Text(
+                  value.title,
+                  style: Theme
+                      .of(context)
+                      .textTheme
+                      .subtitle1
+                      .copyWith(color: Colors.green),
+                ),
+                leading: Icon(
+                  Icons.subject,
+                  color: Colors.green,
+                ),
+                onTap: () {
+                  close(context, value);
+                },
+              ))
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class HackerNewWebView extends StatefulWidget {
+  final String urlSource;
+
+  HackerNewWebView({this.urlSource});
+
+  @override
+  _HackerNewWebViewState createState() => _HackerNewWebViewState();
+}
+
+class _HackerNewWebViewState extends State<HackerNewWebView> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: WebView(
+        initialUrl: widget.urlSource,
+        javascriptMode: JavascriptMode.unrestricted,
+      ),
+    );
   }
 }

@@ -19,27 +19,6 @@ class HackerNewBloc {
 
   final _isLoadingSubject = BehaviorSubject<bool>.seeded(false);
   var _articleList = <Article>[];
-  static List<int> _newId = [
-    24599642,
-    24615916,
-    24613979,
-    24600978,
-    24599837,
-    24607645,
-    24615185,
-    24623076,
-    24608925,
-    24611341
-  ];
-  static List<int> _topId = [
-    24617542,
-    24605949,
-    24601579,
-    24593093,
-    24618707,
-    24593028,
-    24609449,
-  ];
   HashMap<int, Article> _articlesMap;
 
 //constructor cant not async
