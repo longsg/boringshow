@@ -7,10 +7,15 @@ import 'package:shamand/model/article.dart';
 enum StoryType { topStories, newStory }
 
 class HackerNewBloc {
-  Stream<UnmodifiableListView<Article>> get articleStream =>
-      _articleSubject.stream;
+  Stream<UnmodifiableListView<Article>> get topStories =>
+      _topStoriesSubject.stream;
+
+  Stream<UnmodifiableListView<Article>> get newStories =>
+      _newStoriesSubject.stream;
   static const String _baseUrl = "https://hacker-news.firebaseio.com/v0/";
-  final _articleSubject = BehaviorSubject<UnmodifiableListView<Article>>();
+  final _topStoriesSubject = BehaviorSubject<UnmodifiableListView<Article>>();
+
+  final _newStoriesSubject = BehaviorSubject<UnmodifiableListView<Article>>();
 
   Sink<StoryType> get storyType => _storyTypeController.sink;
   final _storyTypeController = StreamController<StoryType>();
@@ -37,7 +42,10 @@ class HackerNewBloc {
       //   // _getUpdateArticle(_topId);
       //   _getIdType(StoryType.topStories);
       // }
-      _getUpdateArticle(await _getIdType(storyType));
+      _getUpdateArticle(
+          _topStoriesSubject, await _getIdType(StoryType.topStories));
+      _getUpdateArticle(
+          _newStoriesSubject, await _getIdType(StoryType.newStory));
     });
   }
 
@@ -62,10 +70,11 @@ class HackerNewBloc {
     return _articlesMap[id];
   }
 
-  _getUpdateArticle(List<int> ids) async {
+  _getUpdateArticle(BehaviorSubject<UnmodifiableListView<Article>> subject,
+      List<int> ids) async {
     _isLoadingSubject.add(true);
     await _updateArticle(ids);
-    _articleSubject.add(UnmodifiableListView(_articleList));
+    subject.add(UnmodifiableListView(_articleList));
     _isLoadingSubject.add(false);
   }
 
@@ -81,6 +90,9 @@ class HackerNewBloc {
   }
 
   Future<void> _initsArticles() async {
-    _getUpdateArticle(await _getIdType(StoryType.topStories));
+    _getUpdateArticle(
+        _topStoriesSubject, await _getIdType(StoryType.topStories));
+    _getUpdateArticle(
+        _newStoriesSubject, await _getIdType(StoryType.topStories));
   }
 }

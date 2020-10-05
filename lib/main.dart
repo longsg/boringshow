@@ -61,8 +61,10 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () async {
                 final result = await showSearch(
                     context: context,
-                    delegate:
-                        ArticleSearch(article: widget.bloc.articleStream));
+                    delegate: ArticleSearch(
+                        article: _currentIndex == 0
+                            ? widget.bloc.topStories
+                            : widget.bloc.newStories));
                 // if (await canLaunch(result.url)) {
                 //   launch(result.url,forceWebView: true);
                 // }
@@ -77,12 +79,19 @@ class _MyHomePageState extends State<MyHomePage> {
               })
         ],
       ),
-      body: StreamBuilder<UnmodifiableListView<Article>>(
-          stream: widget.bloc.articleStream,
-          initialData: UnmodifiableListView<Article>([]),
-          builder: (context, snapShot) => ListView(
-                children: snapShot.data.map(_buildItem).toList(),
-              )),
+      body: _currentIndex == 0
+          ? StreamBuilder<UnmodifiableListView<Article>>(
+              stream: widget.bloc.topStories,
+              initialData: UnmodifiableListView<Article>([]),
+              builder: (context, snapShot) => ListView(
+                    children: snapShot.data.map(_buildItem).toList(),
+                  ))
+          : StreamBuilder<UnmodifiableListView<Article>>(
+              stream: widget.bloc.newStories,
+              initialData: UnmodifiableListView<Article>([]),
+              builder: (context, snapShot) => ListView(
+                    children: snapShot.data.map(_buildItem).toList(),
+                  )),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         selectedItemColor: Colors.green,
@@ -108,7 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Widget _buildItem(Article article) {
     return Padding(
-      key: Key(article.title),
+      key: PageStorageKey(article.title),
       padding: const EdgeInsets.all(15.0),
       child: ExpansionTile(
         title: Text(
@@ -279,34 +288,34 @@ class ArticleSearch extends SearchDelegate<Article> {
       stream: article,
       builder:
           (context, AsyncSnapshot<UnmodifiableListView<Article>> snapShot) {
-        if (!snapShot.hasData) {
-          return Center(
-            child: Text("No data !"),
-          );
-        }
-        final result =
-        snapShot.data.where((e) => e.title.toLowerCase().contains(query));
+            if (!snapShot.hasData) {
+              return Center(
+                child: Text("No data !"),
+              );
+            }
+            final result =
+            snapShot.data.where((e) => e.title.toLowerCase().contains(query));
 
-        return ListView(
-          children: result
-              .map<ListTile>((value) =>
-              ListTile(
-                title: Text(
-                  value.title,
-                  style: Theme
-                      .of(context)
-                      .textTheme
-                      .subtitle1
-                      .copyWith(color: Colors.green),
-                ),
-                leading: Icon(
-                  Icons.subject,
-                  color: Colors.green,
-                ),
-                onTap: () {
-                  close(context, value);
-                },
-              ))
+            return ListView(
+              children: result
+                  .map<ListTile>((value) =>
+                  ListTile(
+                    title: Text(
+                      value.title,
+                      style: Theme
+                          .of(context)
+                          .textTheme
+                          .subtitle1
+                          .copyWith(color: Colors.green),
+                    ),
+                    leading: Icon(
+                      Icons.subject,
+                      color: Colors.green,
+                    ),
+                    onTap: () {
+                      close(context, value);
+                    },
+                  ))
               .toList(),
         );
       },
