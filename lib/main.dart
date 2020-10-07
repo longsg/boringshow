@@ -4,25 +4,29 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:shamand/bloc/hacknew_bloc.dart';
 import 'package:shamand/bloc/preference_bloc.dart';
 import 'package:shamand/bloc/preference_state.dart';
 import 'package:shamand/model/article.dart';
 import 'package:shamand/widget/article_search.dart';
+import 'package:shamand/widget/headlines.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
   final bloc = HackerNewBloc();
   final prefShare = PreferenceBloc();
-  runApp(MyApp(hackerNewBloc: bloc, preferenceBloc: prefShare));
+  runApp(MultiProvider(providers: [
+    Provider(create: (_) => HackerNewBloc()),
+    Provider(
+      create: (_) => PreferenceBloc(),
+    ),
+  ], child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
-  final HackerNewBloc hackerNewBloc;
-  final PreferenceBloc preferenceBloc;
-
-  MyApp({this.hackerNewBloc, this.preferenceBloc});
+  MyApp();
 
   // This widget is the root of your application.
   @override
@@ -33,21 +37,13 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(
-        title: 'Flutter Demo Home Page',
-        bloc: hackerNewBloc,
-        preferenceBloc: preferenceBloc,
-      ),
+      home: MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  final HackerNewBloc bloc;
-  final PreferenceBloc preferenceBloc;
-
-  MyHomePage({Key key, this.title, this.bloc, this.preferenceBloc}) : super(key: key);
-  final String title;
+  MyHomePage();
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -60,8 +56,12 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
-        leading: LoadingInfo(isLoading: widget.bloc.isLoading),
+        centerTitle: true,
+        title: HeadLines(
+          title: const ['Top Stories', ' New Stories'][_currentIndex],
+          index: _currentIndex,
+        ),
+        leading: LoadingInfo(),
         actions: [
           IconButton(
               icon: Icon(Icons.search),
@@ -70,8 +70,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     context: context,
                     delegate: ArticleSearch(
                         article: _currentIndex == 0
-                            ? widget.bloc.topStories
-                            : widget.bloc.newStories));
+                            ? Provider.of<HackerNewBloc>(context).topStories
+                            : Provider.of<HackerNewBloc>(context).newStories));
                 // if (await canLaunch(result.url)) {
                 //   launch(result.url,forceWebView: true);
                 // }
@@ -88,12 +88,16 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       // (_) -> function take parameter but don't use
       body: StreamBuilder<UnmodifiableListView<Article>>(
-          stream: _currentIndex == 0 ? widget.bloc.topStories : widget.bloc.newStories,
+          stream: _currentIndex == 0
+              ? Provider.of<HackerNewBloc>(context).topStories
+              : Provider.of<HackerNewBloc>(context).newStories,
           initialData: UnmodifiableListView<Article>([]),
           builder: (context, snapShot) => ListView(
                 key: PageStorageKey(_currentIndex),
                 children: snapShot.data
-                    .map((a) => Items(article: a, preferenceBloc: widget.preferenceBloc))
+                    .map((value) => Items(
+                        article: value,
+                        preferenceBloc: Provider.of<PreferenceBloc>(context)))
                     .toList(),
               )),
       bottomNavigationBar: BottomNavigationBar(
@@ -106,9 +110,13 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
         onTap: (value) {
           if (value == 0) {
-            widget.bloc.storyType.add(StoryType.topStories);
+            Provider.of<HackerNewBloc>(context, listen: false)
+                .storyType
+                .add(StoryType.topStories);
           } else {
-            widget.bloc.storyType.add(StoryType.newStory);
+            Provider.of<HackerNewBloc>(context, listen: false)
+                .storyType
+                .add(StoryType.newStory);
           }
           setState(() {
             _currentIndex = value;
@@ -181,19 +189,16 @@ class Items extends StatelessWidget {
 }
 
 class LoadingInfo extends StatefulWidget {
-  final Stream<bool> isLoading;
-
-  LoadingInfo({this.isLoading});
+  LoadingInfo();
 
   @override
-  State createState() => LoadingInfoState(isLoading: isLoading);
+  State createState() => LoadingInfoState();
 }
 
 class LoadingInfoState extends State<LoadingInfo> with TickerProviderStateMixin {
-  Stream<bool> isLoading;
   AnimationController _controller;
 
-  LoadingInfoState({this.isLoading});
+  LoadingInfoState();
 
   @override
   void initState() {
@@ -204,15 +209,17 @@ class LoadingInfoState extends State<LoadingInfo> with TickerProviderStateMixin 
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<bool>(
-        stream: isLoading,
-        builder: (context, snapShot) {
-          _controller.forward().then((value) => _controller.reverse());
-          return FadeTransition(
-            opacity: _controller,
-            child: Icon(FontAwesomeIcons.hackerNews),
-          );
-        });
+    return Consumer<HackerNewBloc>(
+      builder: (context, bloc, child) => StreamBuilder<bool>(
+          stream: bloc.isLoading,
+          builder: (context, snapShot) {
+            _controller.forward().then((value) => _controller.reverse());
+            return FadeTransition(
+              opacity: _controller,
+              child: Icon(FontAwesomeIcons.hackerNews),
+            );
+          }),
+    );
   }
 }
 
