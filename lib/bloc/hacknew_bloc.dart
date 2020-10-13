@@ -1,62 +1,62 @@
 import 'dart:async';
 import 'dart:collection';
-import 'package:rxdart/subjects.dart';
+
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:shamand/model/article.dart';
 
 enum StoryType { topStories, newStory }
 
-class HackerNewBloc {
-  Stream<UnmodifiableListView<Article>> get topStories =>
-      _topStoriesSubject.stream;
-
-  Stream<UnmodifiableListView<Article>> get newStories =>
-      _newStoriesSubject.stream;
+class HackerNewNotifier extends ChangeNotifier {
   static const String _baseUrl = "https://hacker-news.firebaseio.com/v0/";
-  final _topStoriesSubject = BehaviorSubject<UnmodifiableListView<Article>>();
+  bool _isLoading = false;
 
-  final _newStoriesSubject = BehaviorSubject<UnmodifiableListView<Article>>();
+  bool get isLoading => _isLoading;
 
-  Sink<StoryType> get storyType => _storyTypeController.sink;
-  final _storyTypeController = StreamController<StoryType>();
+  List<Article> _topArticles = [];
+  List<Article> _newArticles = [];
+  List<Article> _articles = [];
 
-  Stream<bool> get isLoading => _isLoadingSubject.stream;
+  UnmodifiableListView<Article> get article => UnmodifiableListView(_articles);
 
-  final _isLoadingSubject = BehaviorSubject<bool>.seeded(false);
-  var _articleList = <Article>[];
+  UnmodifiableListView<Article> get topArticle => UnmodifiableListView(_topArticles);
+
+  UnmodifiableListView<Article> get newArticle => UnmodifiableListView(_newArticles);
+
+  StoryType _storyType;
+
+  StoryType get storiesType => _storyType;
   HashMap<int, Article> _articlesMap;
 
 //constructor cant not async
-  HackerNewBloc() {
+  HackerNewNotifier() {
     _articlesMap = HashMap<int, Article>();
-    // _updateArticle(_topId)
-    //     .then((_) => _articleSubject.add(UnmodifiableListView(_articleList)));
-    // _getUpdateArticle(_topId);
-    _initsArticles();
-    _storyTypeController.stream.listen((storyType) async {
-      // if (event == StoryType.newStory) {
-      //   // _getUpdateArticle(_newId);
-      //   _getIdType(StoryType.newStory);
-      // }
-      // if (event == StoryType.topStories) {
-      //   // _getUpdateArticle(_topId);
-      //   _getIdType(StoryType.topStories);
-      // }
-      _getUpdateArticle(
-          _topStoriesSubject, await _getIdType(StoryType.topStories));
-      _getUpdateArticle(
-          _newStoriesSubject, await _getIdType(StoryType.newStory));
-    });
+    // _initsArticles();
+    getStoriesType(StoryType.topStories);
   }
 
-  void close() {
-    _storyTypeController.close();
+  Future<void> getStoriesType(StoryType type) async {
+    _isLoading = true;
+    notifyListeners();
+    var id = await _getIdType(type);
+    _articles = await _updateArticle(id);
+    switch (type) {
+      case StoryType.topStories:
+        _topArticles = _articles;
+        break;
+      case StoryType.newStory:
+        _newArticles = _articles;
+        break;
+    }
+    _isLoading = false;
+    notifyListeners();
   }
 
-  Future<Null> _updateArticle(List<int> articleId) async {
-    final furuteArticle = articleId.map((e) => _getArticle(e));
-    final article = await Future.wait(furuteArticle);
-    _articleList = article;
+  Future<List<Article>> _updateArticle(List<int> articleId) async {
+    final futureArticle = articleId.map((e) => _getArticle(e));
+    final all = await Future.wait(futureArticle);
+    var filtered = all.where((element) => element.title != null).toList();
+    return filtered;
   }
 
   Future<Article> _getArticle(int id) async {
@@ -68,14 +68,6 @@ class HackerNewBloc {
       _articlesMap[id] = parseArticle(res.body);
     }
     return _articlesMap[id];
-  }
-
-  _getUpdateArticle(BehaviorSubject<UnmodifiableListView<Article>> subject,
-      List<int> ids) async {
-    _isLoadingSubject.add(true);
-    await _updateArticle(ids);
-    subject.add(UnmodifiableListView(_articleList));
-    _isLoadingSubject.add(false);
   }
 
   Future<List<int>> _getIdType(StoryType type) async {
@@ -90,9 +82,8 @@ class HackerNewBloc {
   }
 
   Future<void> _initsArticles() async {
-    _getUpdateArticle(
-        _topStoriesSubject, await _getIdType(StoryType.topStories));
-    _getUpdateArticle(
-        _newStoriesSubject, await _getIdType(StoryType.topStories));
+    var id = await _getIdType(StoryType.topStories);
+    await _updateArticle(id);
+    notifyListeners();
   }
 }

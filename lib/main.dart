@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -9,16 +7,16 @@ import 'package:shamand/bloc/hacknew_bloc.dart';
 import 'package:shamand/bloc/preference_bloc.dart';
 import 'package:shamand/bloc/preference_state.dart';
 import 'package:shamand/model/article.dart';
-import 'package:shamand/widget/article_search.dart';
 import 'package:shamand/widget/headlines.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
-  final bloc = HackerNewBloc();
-  final prefShare = PreferenceBloc();
   runApp(MultiProvider(providers: [
-    Provider(create: (_) => HackerNewBloc()),
+    ValueListenableProvider(
+      create: (_) => ValueNotifier(true),
+    ),
+    ChangeNotifierProvider(create: (_) => HackerNewNotifier()),
     Provider(
       create: (_) => PreferenceBloc(),
     ),
@@ -63,38 +61,34 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         leading: LoadingInfo(),
         actions: [
-          IconButton(
-              icon: Icon(Icons.search),
-              onPressed: () async {
-                final result = await showSearch(
-                    context: context,
-                    delegate: ArticleSearch(
-                        article: _currentIndex == 0
-                            ? Provider.of<HackerNewBloc>(context).topStories
-                            : Provider.of<HackerNewBloc>(context).newStories));
-                // if (await canLaunch(result.url)) {
-                //   launch(result.url,forceWebView: true);
-                // }
-                if (result != null) {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => HackerNewWebView(
-                                urlSource: result.url,
-                              )));
-                }
-              })
+          // IconButton(
+          //     icon: Icon(Icons.search),
+          //     onPressed: () async {
+          //       final result = await showSearch(
+          //           context: context,
+          //           delegate: ArticleSearch(
+          //               article: _currentIndex == 0
+          //                   ? Provider.of<HackerNewNotifier>(context).topStories
+          //                   : Provider.of<HackerNewNotifier>(context).newStories));
+          //       // if (await canLaunch(result.url)) {
+          //       //   launch(result.url,forceWebView: true);
+          //       // }
+          //       if (result != null) {
+          //         Navigator.push(
+          //             context,
+          //             MaterialPageRoute(
+          //                 builder: (context) => HackerNewWebView(
+          //                       urlSource: result.url,
+          //                     )));
+          //       }
+          //     })
         ],
       ),
       // (_) -> function take parameter but don't use
-      body: StreamBuilder<UnmodifiableListView<Article>>(
-          stream: _currentIndex == 0
-              ? Provider.of<HackerNewBloc>(context).topStories
-              : Provider.of<HackerNewBloc>(context).newStories,
-          initialData: UnmodifiableListView<Article>([]),
-          builder: (context, snapShot) => ListView(
+      body: Consumer<HackerNewNotifier>(
+          builder: (context, bloc, child) => ListView(
                 key: PageStorageKey(_currentIndex),
-                children: snapShot.data
+                children: bloc.article
                     .map((value) => Items(
                         article: value,
                         preferenceBloc: Provider.of<PreferenceBloc>(context)))
@@ -110,13 +104,11 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
         onTap: (value) {
           if (value == 0) {
-            Provider.of<HackerNewBloc>(context, listen: false)
-                .storyType
-                .add(StoryType.topStories);
+            Provider.of<HackerNewNotifier>(context, listen: false)
+                .getStoriesType(StoryType.topStories);
           } else {
-            Provider.of<HackerNewBloc>(context, listen: false)
-                .storyType
-                .add(StoryType.newStory);
+            Provider.of<HackerNewNotifier>(context, listen: false)
+                .getStoriesType(StoryType.newStory);
           }
           setState(() {
             _currentIndex = value;
@@ -209,17 +201,13 @@ class LoadingInfoState extends State<LoadingInfo> with TickerProviderStateMixin 
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<HackerNewBloc>(
-      builder: (context, bloc, child) => StreamBuilder<bool>(
-          stream: bloc.isLoading,
-          builder: (context, snapShot) {
-            _controller.forward().then((value) => _controller.reverse());
-            return FadeTransition(
-              opacity: _controller,
-              child: Icon(FontAwesomeIcons.hackerNews),
-            );
-          }),
-    );
+    return Consumer<HackerNewNotifier>(builder: (context, bloc, child) {
+      _controller.forward().then((value) => _controller.reverse());
+      return FadeTransition(
+        opacity: _controller,
+        child: Icon(FontAwesomeIcons.hackerNews),
+      );
+    });
   }
 }
 
